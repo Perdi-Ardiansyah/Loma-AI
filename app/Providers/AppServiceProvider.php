@@ -23,6 +23,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        //
+        if (config('app.env') === 'production' || env('APP_ENV') === 'production' || str_contains(request()->header('host', ''), 'onrender.com')) {
+            \Illuminate\Support\Facades\URL::forceScheme('https');
+        }
     }
 }

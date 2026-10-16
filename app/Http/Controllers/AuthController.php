@@ -150,7 +150,7 @@ class AuthController extends Controller
         }
 
         try {
-            $redirectUrl = config('services.google.redirect') ?: url('/auth/google/callback');
+            $redirectUrl = $this->resolveGoogleRedirectUrl();
             return Socialite::driver('google')
                 ->redirectUrl($redirectUrl)
                 ->stateless()
@@ -170,7 +170,7 @@ class AuthController extends Controller
         }
 
         try {
-            $redirectUrl = config('services.google.redirect') ?: url('/auth/google/callback');
+            $redirectUrl = $this->resolveGoogleRedirectUrl();
             $googleUser = Socialite::driver('google')
                 ->redirectUrl($redirectUrl)
                 ->stateless()
@@ -268,6 +268,25 @@ class AuthController extends Controller
             'status' => 'ignored',
             'message' => 'User belum login atau jumlah EXP tidak valid'
         ]);
+    }
+
+    /**
+     * Resolusi URL redirect callback Google secara cerdas (mendukung online & localhost).
+     */
+    private function resolveGoogleRedirectUrl()
+    {
+        $redirectUrl = config('services.google.redirect');
+        $host = request()->header('host', '');
+
+        // Jika sedang berjalan di domain online (misal Render) tapi config masih tertulis localhost,
+        // otomatis alihkan ke HTTPS domain online tersebut!
+        if (!empty($host) && !str_contains($host, 'localhost') && !str_contains($host, '127.0.0.1')) {
+            if (empty($redirectUrl) || str_contains($redirectUrl, 'localhost') || str_contains($redirectUrl, '127.0.0.1')) {
+                return 'https://' . $host . '/auth/google/callback';
+            }
+        }
+
+        return !empty($redirectUrl) ? $redirectUrl : url('/auth/google/callback');
     }
 
     /**
