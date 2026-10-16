@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduGen AI - Platform Belajar</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style> 
+        body { background-color: #f0f2f5; } 
+        .summary-box { max-height: 400px; overflow-y: auto; background: #fffde7; border-left: 4px solid #ffc107; }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-dark bg-primary mb-4 shadow">
+    <div class="container d-flex justify-content-between">
+        <span class="navbar-brand mb-0 h1 fw-bold">EduGen AI</span>
+        <button class="btn btn-light btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#uploadModal">
+            + Tambah Buku PDF (AI Auto-Detect)
+        </button>
+    </div>
+</nav>
+
+<div class="container">
+    <div class="row">
+        <!-- Kolom Kiri: Navigasi & Filter -->
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <h5 class="card-title mb-4 fw-bold text-primary">1. Pilih Sumber Belajar</h5>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">BUKU REFERENSI</label>
+                        <select class="form-select border-primary" id="bookSelect">
+                            <option value="">-- Memuat Buku... --</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">FILTER BAB</label>
+                        <select class="form-select" id="chapter" disabled>
+                            <option value="">-- Pilih Bab --</option>
+                        </select>
+                        <div class="form-text">Pilih bab untuk otomatis memuat rangkuman materi.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kolom Kanan: Rangkuman & Kuis -->
+        <div class="col-md-8">
+            <div id="statusAlert" class="alert d-none shadow-sm"></div>
+            
+            <!-- Kartu Rangkuman (Muncul Otomatis) -->
+            <div class="card shadow-sm border-0 mb-4 d-none" id="summaryCard">
+                <div class="card-header bg-white border-bottom-0 pt-3">
+                    <h4 class="mb-0 text-dark fw-bold" id="summaryTitle">Rangkuman Materi</h4>
+                </div>
+                <div class="card-body">
+                    <div class="summary-box p-3 rounded mb-3" id="summaryBody"></div>
+                    
+                    <!-- Form Generate Kuis (Muncul SETELAH rangkuman ada) -->
+                    <div class="bg-light p-3 rounded border">
+                        <h6 class="fw-bold text-primary mb-3">2. Uji Pemahaman dari Rangkuman Ini</h6>
+                        <form id="quizForm">
+                            <div class="row align-items-end">
+                                <div class="col-md-4 mb-2">
+                                    <label class="form-label small">Jenis Ujian</label>
+                                    <select class="form-select form-select-sm" id="contentType">
+                                        <option value="kuis">Kuis Pilihan Ganda</option>
+                                        <option value="uts">Paket UTS/UAS</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3 mb-2">
+                                    <label class="form-label small">Jumlah Soal</label>
+                                    <input type="number" class="form-control form-control-sm" id="count" value="4" min="1">
+                                </div>
+                                <div class="col-md-3 mb-2">
+                                    <label class="form-label small">Kesulitan</label>
+                                    <select class="form-select form-select-sm" id="difficulty">
+                                        <option value="mudah">Mudah</option><option value="sedang" selected>Sedang</option><option value="sulit">Sulit</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2 mb-2">
+                                    <button type="submit" class="btn btn-primary btn-sm w-100">Buat Soal</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Kartu Hasil Kuis/UTS -->
+            <div class="card shadow-sm border-0 d-none" id="quizResultCard">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0 fw-bold" id="quizResultTitle">Hasil Latihan</h5>
+                </div>
+                <div class="card-body" id="quizResultBody"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Upload Buku -->
+<div class="modal fade" id="uploadModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold">Unggah Buku PDF Baru</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="uploadForm">
+          <div class="modal-body">
+              <div class="alert alert-info py-2">
+                 <small>Cukup unggah PDF. AI akan mengekstrak metadata otomatis. Setelah berhasil, buku akan langsung dirangkum.</small>
+              </div>
+              <div class="mb-3">
+                  <input type="file" class="form-control" id="upFile" accept=".pdf" required>
+              </div>
+              <div id="uploadLoader" class="d-none text-primary mt-2 small">
+                  <span class="spinner-border spinner-border-sm"></span> AI sedang membedah dokumen dan melatih database...
+              </div>
+          </div>
+          <div class="modal-footer">
+            <button type="submit" class="btn btn-success" id="btnUpload">Proses dengan AI</button>
+          </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    let availableBooks = {};
+    let currentSummaryText = ""; // Variabel krusial untuk menyimpan teks rangkuman
+
+    // 1. Muat Buku ke Dropdown
+    async function loadAvailableBooks(autoSelectTitle = null) {
+        try {
+            const res = await fetch('http://127.0.0.1:8000/api/available-books');
+            availableBooks = await res.json();
+            
+            const bookSelect = document.getElementById('bookSelect');
+            bookSelect.innerHTML = '<option value="">-- Pilih Buku Referensi --</option>';
+            
+            let lastBook = null;
+            Object.keys(availableBooks).forEach(title => {
+                const b = availableBooks[title];
+                bookSelect.innerHTML += `<option value="${title}">${title} (${b.subject} Kls ${b.grade})</option>`;
+                lastBook = title; // Menyimpan buku terakhir untuk auto-select
+            });
+
+            // Auto-select buku jika baru diunggah
+            if (autoSelectTitle && availableBooks[autoSelectTitle]) {
+                bookSelect.value = autoSelectTitle;
+                bookSelect.dispatchEvent(new Event('change'));
+            } else if (lastBook && autoSelectTitle === "LATEST") {
+                bookSelect.value = lastBook;
+                bookSelect.dispatchEvent(new Event('change'));
+            }
+
+        } catch (err) { console.error("Gagal memuat buku:", err); }
+    }
+
+    // 2. Saat Buku Dipilih -> Munculkan Bab
+    document.getElementById('bookSelect').addEventListener('change', function() {
+        const title = this.value;
+        const chapterSelect = document.getElementById('chapter');
+        
+        chapterSelect.innerHTML = '<option value="">-- Pilih Bab --</option>';
+        document.getElementById('summaryCard').classList.add('d-none');
+        document.getElementById('quizResultCard').classList.add('d-none');
+        
+        if (title && availableBooks[title]) {
+            chapterSelect.disabled = false;
+            availableBooks[title].chapters.forEach(chap => {
+                chapterSelect.innerHTML += `<option value="${chap}">${chap}</option>`;
+            });
+            // Auto-pilih "Semua Materi" jika ada, untuk langsung memicu rangkuman
+            if(availableBooks[title].chapters.includes("Semua Materi")) {
+                chapterSelect.value = "Semua Materi";
+                chapterSelect.dispatchEvent(new Event('change'));
+            }
+        } else {
+            chapterSelect.disabled = true;
+        }
+    });
+
+    // 3. Saat Bab Dipilih -> OTOMATIS Buat Rangkuman
+    document.getElementById('chapter').addEventListener('change', async function() {
+        if(!this.value) return;
+        
+        document.getElementById('quizResultCard').classList.add('d-none');
+        showAlert("Sedang membaca bab dan menyusun rangkuman...", false);
+        
+        const title = document.getElementById('bookSelect').value;
+        const bData = availableBooks[title];
+
+        try {
+            const res = await fetch('http://127.0.0.1:8000/api/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    grade: bData.grade, subject: bData.subject, chapter: this.value,
+                    content_type: "ringkasan", count: 1, difficulty: "sedang"
+                })
+            });
+            const data = await res.json();
+            if(!res.ok) throw new Error(data.detail);
+            
+            document.getElementById('statusAlert').classList.add('d-none');
+            
+            // Simpan teks rangkuman ke variabel global untuk dikirim ke Kuis nanti
+            currentSummaryText = data.summary + "\n\nPOIN PENTING:\n" + data.key_points.join("\n");
+            
+            // Tampilkan Rangkuman ke UI
+            document.getElementById('summaryCard').classList.remove('d-none');
+            document.getElementById('summaryTitle').innerText = data.title || "Rangkuman Materi";
+            
+            let html = `<p class="text-justify">${data.summary}</p><h6 class="fw-bold mt-3">Poin Penting:</h6><ul>`;
+            data.key_points.forEach(p => html += `<li>${p}</li>`);
+            html += `</ul>`;
+            document.getElementById('summaryBody').innerHTML = html;
+
+        } catch (err) { showAlert(err.message, true); }
+    });
+
+    // 4. Saat Tombol "Buat Soal" Diklik -> Gunakan Konteks Rangkuman!
+    document.getElementById('quizForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        showAlert("Menyusun soal bedasarkan rangkuman di atas...", false);
+        document.getElementById('quizResultCard').classList.add('d-none');
+
+        const title = document.getElementById('bookSelect').value;
+        const bData = availableBooks[title];
+
+        try {
+            const res = await fetch('http://127.0.0.1:8000/api/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    grade: bData.grade, subject: bData.subject, chapter: document.getElementById('chapter').value,
+                    content_type: document.getElementById('contentType').value,
+                    count: parseInt(document.getElementById('count').value),
+                    difficulty: document.getElementById('difficulty').value,
+                    summary_context: currentSummaryText // MENGIRIM TEKS RANGKUMAN KE BACKEND!
+                })
+            });
+            const data = await res.json();
+            if(!res.ok) throw new Error(data.detail);
+            
+            document.getElementById('statusAlert').classList.add('d-none');
+            renderQuizResult(data);
+        } catch (err) { showAlert(err.message, true); }
+    });
+
+    // 5. Fungsi Bantuan Render Kuis
+    function renderQuizResult(data) {
+        document.getElementById('quizResultCard').classList.remove('d-none');
+        document.getElementById('quizResultTitle').innerText = data.title || "Latihan Evaluasi";
+        let html = '';
+        if(data.instructions) html += `<p class="text-muted"><em>${data.instructions}</em></p>`;
+        
+        (data.multiple_choice || []).forEach((q, i) => {
+            html += `<div class="mb-3"><p class="mb-1 fw-bold">${i+1}. ${q.question}</p>
+                     <ul class="list-unstyled ms-3 mb-2">
+                     <li>A. ${q.options.A}</li><li>B. ${q.options.B}</li>
+                     <li>C. ${q.options.C}</li><li>D. ${q.options.D}</li></ul>
+                     <div class="alert alert-success py-1 small"><strong>Jawab: ${q.answer}</strong><br>${q.explanation}</div></div>`;
+        });
+        
+        (data.essay || []).forEach((q, i) => {
+            html += `<hr><div class="mb-3"><p class="mb-1 fw-bold">Esai ${i+1}. ${q.question}</p>
+                     <div class="alert alert-info py-1 small"><strong>Kunci:</strong> ${q.answer_key}</div></div>`;
+        });
+        document.getElementById('quizResultBody').innerHTML = html;
+        document.getElementById('quizResultCard').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    const showAlert = (msg, isError) => {
+        const alertBox = document.getElementById('statusAlert');
+        alertBox.className = `alert ${isError ? 'alert-danger' : 'alert-primary'} shadow-sm`;
+        alertBox.innerText = msg;
+        alertBox.classList.remove('d-none');
+    };
+
+    // 6. Logika Upload
+    document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('btnUpload');
+        const loader = document.getElementById('uploadLoader');
+        btn.disabled = true; loader.classList.remove('d-none');
+
+        const formData = new FormData();
+        formData.append("file", document.getElementById('upFile').files[0]);
+
+        try {
+            const res = await fetch('http://127.0.0.1:8000/api/upload-book', { method: 'POST', body: formData });
+            const data = await res.json();
+            if(!res.ok) throw new Error(data.detail);
+            
+            showAlert(data.message, false);
+            bootstrap.Modal.getInstance(document.getElementById('uploadModal')).hide();
+            
+            // Muat ulang daftar buku dan OTOMATIS pilih buku terbaru!
+            await loadAvailableBooks("LATEST");
+            
+        } catch (err) { alert("Gagal: " + err.message); } 
+        finally {
+            btn.disabled = false; loader.classList.add('d-none');
+            document.getElementById('uploadForm').reset();
+        }
+    });
+
+    loadAvailableBooks();
+</script>
+</body>
+</html>
