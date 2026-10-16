@@ -35,10 +35,17 @@ Route::post('/api/update-exp', [AuthController::class, 'updateExp'])->name('api.
 Route::get('/app', function () {
     $user = Auth::user();
 
-    // Fetch initial module from database
-    $module = DB::table('learning_modules')->first();
-    $sources = DB::table('learning_sources')->get();
-    $flashcards = DB::table('learning_flashcards')->get();
+    $module = null;
+    $sources = collect();
+    $flashcards = collect();
+
+    try {
+        $module = DB::table('learning_modules')->first();
+        $sources = DB::table('learning_sources')->get();
+        $flashcards = DB::table('learning_flashcards')->get();
+    } catch (\Throwable $e) {
+        // Fallback gracefully so /app page always renders even if database is migrating or empty
+    }
 
     return view('welcome', compact('user', 'module', 'sources', 'flashcards'));
 })->name('app');
